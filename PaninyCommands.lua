@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 
 -- Список админов по UserId — замените на свои id
 local Admins = {
-    [12345678] = true,
+    [9735212681] = true,
     -- [11111111] = true,
 }
 

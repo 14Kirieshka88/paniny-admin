@@ -1,26 +1,35 @@
--- Paniny API v1
--- Full implementation of the original Paniny Console functionality as callable API
--- Place on your GitHub raw URL and update GUI API_URL accordingly.
+-- Paniny API v2 (full)
+-- Put this file on your GitHub raw URL. GUI will load it with loadstring(game:HttpGet(API_URL))()
+-- Sends a built-in Roblox notification on load ("Made with Paniny API").
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
 local Workspace = workspace
-
 local LocalPlayer = Players.LocalPlayer
+
+-- Notify (from API side)
+pcall(function()
+	StarterGui:SetCore("SendNotification", {
+		Title = "Made with Paniny API";
+		Text = "Paniny API connected";
+		Icon = "rbxassetid://111596629978450";
+		Duration = 4;
+	})
+end)
 
 local PaninyAPI = {}
 
 -- Settings
-local Settings = {
+PaninyAPI.Settings = {
 	FlySpeed = 50,
 	MinWalkSpeed = 0.1,
 	MaxWalkSpeed = 300,
 	AimbotSmoothness = 0.2,
 }
 
--- Internal helpers
+-- helpers
 local function findPlayers(arg)
 	if not arg or arg == "" then return {LocalPlayer} end
 	local low = tostring(arg):lower()
@@ -39,7 +48,7 @@ local function ensureCharacter(plr)
 	if not plr then return nil end
 	local char = plr.Character
 	if not char then return nil end
-	return char:FindFirstChild("Humanoid") and char
+	return char:FindFirstChildOfClass("Humanoid") and char
 end
 
 local function getRoot(plr)
@@ -52,13 +61,14 @@ local function getHead(plr)
 	return plr.Character:FindFirstChild("Head")
 end
 
--- states
-local flyState = {}        -- [userId] = {bv = BodyVelocity}
-local speedState = {}      -- [userId] = {original = number, current = number}
-local godState = {}        -- [userId] = {enabled = bool, prevMax = number}
-local espHighlights = {}   -- [userId] = Highlight
-local espHealthGuis = {}   -- [userId] = BillboardGui
-local playerConnections = {} -- [userId] = { connections }
+-- state containers
+local flyState = {}
+local speedState = {}
+local godState = {}
+local espHighlights = {}
+local espHealthGuis = {}
+local playerConnections = {}
+local additState = { aimbot = { enabled = false, holdKey = nil, connection = nil } }
 
 local function cleanupPlayer(plr)
 	if not plr then return end
@@ -85,6 +95,8 @@ end
 
 Players.PlayerRemoving:Connect(function(plr) cleanupPlayer(plr) end)
 
+-- ========== Core commands (API functions) ==========
+
 -- FLY
 function PaninyAPI.enableFly(plr, enable)
 	plr = plr or LocalPlayer
@@ -110,7 +122,7 @@ function PaninyAPI.enableFly(plr, enable)
 				end
 				local dir = Vector3.new()
 				local cam = Workspace.CurrentCamera
-				local spd = (speedState[id] and speedState[id].current) or Settings.FlySpeed
+				local spd = (speedState[id] and speedState[id].current) or PaninyAPI.Settings.FlySpeed
 				if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
 				if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
@@ -140,13 +152,13 @@ function PaninyAPI.setSpeed(plr, on, value)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local hum = char:FindFirstChild("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then return false end
 	local id = plr.UserId
 	if on then
-		local val = tonumber(value) or Settings.FlySpeed
-		if val < Settings.MinWalkSpeed then val = Settings.MinWalkSpeed end
-		if val > Settings.MaxWalkSpeed then val = Settings.MaxWalkSpeed end
+		local val = tonumber(value) or PaninyAPI.Settings.FlySpeed
+		if val < PaninyAPI.Settings.MinWalkSpeed then val = PaninyAPI.Settings.MinWalkSpeed end
+		if val > PaninyAPI.Settings.MaxWalkSpeed then val = PaninyAPI.Settings.MaxWalkSpeed end
 		if not speedState[id] then speedState[id] = {original = hum.WalkSpeed, current = val}
 		else speedState[id].current = val end
 		hum.WalkSpeed = val
@@ -161,7 +173,7 @@ function PaninyAPI.setSpeed(plr, on, value)
 	return true
 end
 
--- TP (smart)
+-- TP smart
 function PaninyAPI.tpSmart(parts)
 	local function waitForRoot(plr, timeout)
 		timeout = timeout or 2
@@ -225,7 +237,7 @@ function PaninyAPI.healPlayer(plr)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local hum = char:FindFirstChild("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then return false end
 	local id = plr.UserId
 	if godState[id] and godState[id].enabled then
@@ -246,7 +258,7 @@ function PaninyAPI.killPlayer(plr)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local hum = char:FindFirstChild("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then return false end
 	hum.Health = 0
 	return true
@@ -257,7 +269,7 @@ function PaninyAPI.setGod(plr, on)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local hum = char:FindFirstChild("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then return false end
 	local id = plr.UserId
 	if on then
@@ -278,12 +290,11 @@ function PaninyAPI.setGod(plr, on)
 	return true
 end
 
--- INVIS
+-- INVIS (store original transparencies not persisted across join in this simple API)
 function PaninyAPI.setInvis(plr, on)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local id = plr.UserId
 	if on then
 		for _,v in pairs(char:GetDescendants()) do
 			if (v:IsA("BasePart") or v:IsA("Decal") or v:IsA("Texture")) and v.Parent then
@@ -305,7 +316,7 @@ function PaninyAPI.setSit(plr, on)
 	plr = plr or LocalPlayer
 	local char = ensureCharacter(plr)
 	if not char then return false end
-	local hum = char:FindFirstChild("Humanoid")
+	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum then return false end
 	hum.Sit = on
 	return true
@@ -360,7 +371,7 @@ function PaninyAPI.createHealthGuiForPlayer(plr)
 	txt.Parent = gui
 
 	local function update()
-		local hum = plr.Character and plr.Character:FindFirstChild("Humanoid")
+		local hum = plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
 		if not hum then txt.Text = "HP: ?" return end
 		local hp = math.floor(hum.Health + 0.5)
 		local maxhp = math.floor(hum.MaxHealth + 0.5)
@@ -373,14 +384,14 @@ function PaninyAPI.createHealthGuiForPlayer(plr)
 
 	local con1 = nil
 	if plr.Character then
-		local hum = plr.Character:FindFirstChild("Humanoid")
+		local hum = plr.Character:FindFirstChildOfClass("Humanoid")
 		if hum then con1 = hum.HealthChanged:Connect(update) end
 	end
 	local con2 = plr.CharacterAdded:Connect(function(char)
 		task.wait(0.1)
 		if gui and gui.Parent then gui.Parent = char:FindFirstChild("Head") or gui.Parent end
 		if con1 and con1.Disconnect then pcall(con1.Disconnect, con1) end
-		local hum = char:FindFirstChild("Humanoid")
+		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then con1 = hum.HealthChanged:Connect(update) end
 		update()
 	end)
@@ -403,9 +414,7 @@ function PaninyAPI.removeHealthGuiForPlayer(plr)
 	return true
 end
 
--- AIMBOT (local only)
-local additState = { aimbot = { enabled = false, holdKey = nil, connection = nil } }
-
+-- AIMBOT (local)
 local function getNearestTarget(maxDistance)
 	maxDistance = maxDistance or 300
 	local best, bestDist = nil, math.huge
@@ -414,10 +423,10 @@ local function getNearestTarget(maxDistance)
 	for _,p in pairs(Players:GetPlayers()) do
 		if p ~= LocalPlayer and ensureCharacter(p) then
 			local head = getHead(p)
-			local hum = p.Character and p.Character:FindFirstChild("Humanoid")
+			local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
 			if head and hum and hum.Health > 0 then
 				local dist = (head.Position - camPos).Magnitude
-				local screenPos, onScreen = cam:WorldToViewportPoint(head.Position)
+				local _, onScreen = cam:WorldToViewportPoint(head.Position)
 				if onScreen and dist < bestDist and dist <= maxDistance then
 					best = p
 					bestDist = dist
@@ -447,7 +456,7 @@ function PaninyAPI.startAimbot(holdKey)
 		local dir = (targetPos - camCFrame.Position)
 		if dir.Magnitude < 0.1 then return end
 		local newCFrame = CFrame.new(camCFrame.Position, camCFrame.Position + dir)
-		Workspace.CurrentCamera.CFrame = camCFrame:Lerp(newCFrame, math.clamp(Settings.AimbotSmoothness, 0.01, 1))
+		Workspace.CurrentCamera.CFrame = camCFrame:Lerp(newCFrame, math.clamp(PaninyAPI.Settings.AimbotSmoothness, 0.01, 1))
 	end)
 	additState.aimbot.connection = conn
 	return true
@@ -461,13 +470,10 @@ function PaninyAPI.stopAimbot()
 	return true
 end
 
--- Expose utilities
+-- expose helpers for GUI
 PaninyAPI.findPlayers = findPlayers
 PaninyAPI.ensureCharacter = ensureCharacter
 PaninyAPI.getRoot = getRoot
 PaninyAPI.getHead = getHead
-PaninyAPI.Settings = Settings
 
--- Return the API table
 return PaninyAPI
-

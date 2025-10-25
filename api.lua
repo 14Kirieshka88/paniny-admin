@@ -26,7 +26,7 @@ PaninyAPI.Settings = {
 	FlySpeed = 50,
 	MinWalkSpeed = 0.1,
 	MaxWalkSpeed = 300,
-	AimbotSmoothness = 1000,
+	AimbotSmoothness = 0,
 }
 
 -- helpers

@@ -14,7 +14,7 @@ pcall(function()
 	StarterGui:SetCore("SendNotification", {
 		Title = "Made with Paniny API";
 		Text = "Paniny API connected";
-		Icon = "rbxassetid://111596629978450";
+		Icon = "rbxassetid://72787296931257";
 		Duration = 4;
 	})
 end)

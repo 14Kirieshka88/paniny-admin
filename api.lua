@@ -384,31 +384,47 @@ function PaninyAPI.setESP(plr, on)
 end
 
 -- === АВТООБНОВЛЕНИЕ ESP ===
-local function ensureESP(plr)
-    if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then return end
-    if not plr.Character:FindFirstChild("Highlight") then
-        PaninyAPI.addESP(plr) -- твоя основная функция esp
-        PaninyAPI.addESPHealth(plr) -- если используешь esp с hp
+-- ===== Авто-включение ESP + health GUI на всех игроках =====
+
+local function tryEnableESP(plr)
+    -- включаем ESP если функция существует
+    if PaninyAPI.setESP then
+        PaninyAPI.setESP(plr, true)
+    end
+    -- создаём GUI здоровья, если функция есть
+    if PaninyAPI.createHealthGuiForPlayer then
+        PaninyAPI.createHealthGuiForPlayer(plr)
     end
 end
 
 local function trackPlayer(plr)
-    ensureESP(plr)
-    plr.CharacterAdded:Connect(function()
-        task.wait(1) -- немного подождать пока появится тело
-        ensureESP(plr)
+    -- при старте сразу пытаемся
+    tryEnableESP(plr)
+
+    -- когда персонаж заново появляется (респавн), восстанавливаем
+    local conn = plr.CharacterAdded:Connect(function(char)
+        task.wait(0.1)  -- небольшой тайм-аут, чтобы части создались
+        tryEnableESP(plr)
     end)
+
+    -- сохраняем соединение на случай очистки
+    local id = plr.UserId
+    playerConnections[id] = playerConnections[id] or {}
+    table.insert(playerConnections[id], conn)
 end
 
-for _, v in ipairs(Players:GetPlayers()) do
-    if v ~= LocalPlayer then
-        trackPlayer(v)
+-- запускаем для всех текущих игроков
+for _, pl in ipairs(Players:GetPlayers()) do
+    if pl ~= LocalPlayer then
+        trackPlayer(pl)
     end
 end
 
-Players.PlayerAdded:Connect(function(plr)
-    trackPlayer(plr)
+-- при добавлении нового игрока
+Players.PlayerAdded:Connect(function(pl)
+    trackPlayer(pl)
 end)
+
 
 
 -- Health GUI

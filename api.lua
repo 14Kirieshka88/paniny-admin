@@ -359,27 +359,49 @@ end
 
 -- ESP (Highlight)
 function PaninyAPI.setESP(plr, on)
+	local Players = game:GetService("Players")
+	local LocalPlayer = Players.LocalPlayer
+	espHighlights = espHighlights or {}
+
+	-- "all" case
 	if tostring(plr):lower() == "all" then
-		for _,p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then PaninyAPI.setESP(p, on) end end
+		for _,p in pairs(Players:GetPlayers()) do
+			if p ~= LocalPlayer then
+				PaninyAPI.setESP(p, on)
+			end
+		end
 		return true
 	end
+
 	if not plr then return false end
 	local id = plr.UserId
+
 	if on then
+		-- если уже есть Highlight, ничего не делаем
 		if espHighlights[id] and espHighlights[id].Parent then return true end
 		if not plr.Character then return false end
+
+		-- создаём Highlight
 		local highlight = Instance.new("Highlight")
+		highlight.Name = "PaninyESP"
 		highlight.FillTransparency = 1
 		highlight.OutlineColor = Color3.fromRGB(0,255,0)
 		highlight.Adornee = plr.Character
 		highlight.Parent = plr.Character
+
 		espHighlights[id] = highlight
 	else
+		-- отключаем только если явно вызвано off
 		if espHighlights[id] then
-			pcall(function() if espHighlights[id].Parent then espHighlights[id]:Destroy() end end)
+			pcall(function() 
+				if espHighlights[id].Parent then 
+					espHighlights[id]:Destroy() 
+				end 
+			end)
 			espHighlights[id] = nil
 		end
 	end
+
 	return true
 end
 

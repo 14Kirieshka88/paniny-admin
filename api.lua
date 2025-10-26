@@ -383,6 +383,9 @@ function PaninyAPI.setESP(plr, on)
 	return true
 end
 
+-- === АВТООБНОВЛЕНИЕ ESP ===
+
+
 -- Health GUI
 function PaninyAPI.createHealthGuiForPlayer(plr)
 	if not plr or not plr.Character then return nil end

@@ -402,6 +402,24 @@ function PaninyAPI.setESPAll(on)
 	end
 end
 
+-- глобальный цикл в API, который перевызвает setESP для всех игроков с включённым ESP
+spawn(function()
+	while true do
+		wait(0.5) -- интервал перевызова
+		for id, data in pairs(espHighlights or {}) do
+			if data.enabled then
+				local plr = game:GetService("Players"):GetPlayerByUserId(id)
+				if plr then
+					pcall(function()
+						PaninyAPI.setESP(plr, true) -- перевызов функции
+					end)
+				end
+			end
+		end
+	end
+end)
+
+
 -- === АВТООБНОВЛЕНИЕ ESP ===
 
 

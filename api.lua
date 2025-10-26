@@ -95,7 +95,7 @@ Players.PlayerRemoving:Connect(function(plr) cleanupPlayer(plr) end)
 
 -- ========== Core commands (API functions) ==========
 -- NOCLIP
-local noclipState = {}
+
 
 function PaninyAPI.setNoclip(plr, enable)
     plr = plr or LocalPlayer
@@ -127,6 +127,7 @@ function PaninyAPI.setNoclip(plr, enable)
     end
     return true
 end
+
 
 -- FLY
 function PaninyAPI.enableFly(plr, enable)

@@ -383,6 +383,34 @@ function PaninyAPI.setESP(plr, on)
 	return true
 end
 
+-- === АВТООБНОВЛЕНИЕ ESP ===
+local function ensureESP(plr)
+    if not plr.Character or not plr.Character:FindFirstChild("HumanoidRootPart") then return end
+    if not plr.Character:FindFirstChild("Highlight") then
+        PaninyAPI.addESP(plr) -- твоя основная функция esp
+        PaninyAPI.addESPHealth(plr) -- если используешь esp с hp
+    end
+end
+
+local function trackPlayer(plr)
+    ensureESP(plr)
+    plr.CharacterAdded:Connect(function()
+        task.wait(1) -- немного подождать пока появится тело
+        ensureESP(plr)
+    end)
+end
+
+for _, v in ipairs(Players:GetPlayers()) do
+    if v ~= LocalPlayer then
+        trackPlayer(v)
+    end
+end
+
+Players.PlayerAdded:Connect(function(plr)
+    trackPlayer(plr)
+end)
+
+
 -- Health GUI
 function PaninyAPI.createHealthGuiForPlayer(plr)
 	if not plr or not plr.Character then return nil end

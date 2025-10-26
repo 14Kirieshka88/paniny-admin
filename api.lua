@@ -1,6 +1,4 @@
--- Paniny API v2 (full)
--- Put this file on your GitHub raw URL. GUI will load it with loadstring(game:HttpGet(API_URL))()
--- Sends a built-in Roblox notification on load ("Made with Paniny API").
+-- Paniny API v1
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -96,6 +94,39 @@ end
 Players.PlayerRemoving:Connect(function(plr) cleanupPlayer(plr) end)
 
 -- ========== Core commands (API functions) ==========
+-- NOCLIP
+local noclipState = {}
+
+function PaninyAPI.setNoclip(plr, enable)
+    plr = plr or LocalPlayer
+    local char = ensureCharacter(plr)
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+
+    local id = plr.UserId
+    if enable then
+        if noclipState[id] then return true end
+        noclipState[id] = RunService.Stepped:Connect(function()
+            for _, part in pairs(char:GetChildren()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end)
+    else
+        if noclipState[id] then
+            noclipState[id]:Disconnect()
+            noclipState[id] = nil
+        end
+        for _, part in pairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+    return true
+end
 
 -- FLY
 function PaninyAPI.enableFly(plr, enable)
@@ -172,6 +203,8 @@ function PaninyAPI.setSpeed(plr, on, value)
 	end
 	return true
 end
+
+function PaninyAPI.setNoclip
 
 -- TP smart
 function PaninyAPI.tpSmart(parts)

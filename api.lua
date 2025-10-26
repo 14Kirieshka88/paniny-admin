@@ -359,34 +359,49 @@ end
 
 -- ESP (Highlight)
 function PaninyAPI.setESP(plr, on)
-    if not plr or not plr.Character then return end
-
+    if not plr then return end
     local char = plr.Character
-    local highlight = char:FindFirstChildOfClass("Highlight")
+    if not char then return end
 
-    -- ВКЛЮЧЕНИЕ
-    if on then
-        if not highlight then
-            highlight = Instance.new("Highlight")
-            highlight.Name = "PaninyESP"
-            highlight.FillTransparency = 0.5
-            highlight.OutlineTransparency = 0
-            highlight.FillColor = Color3.fromRGB(255, 255, 0)
-            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-            highlight.Adornee = char
-            highlight.Parent = char
-        end
+    -- Таблица для отслеживания
+    PaninyAPI._espTrackers = PaninyAPI._espTrackers or {}
 
-        -- Автоматическое восстановление после смерти / респавна
-        if not PaninyAPI._espTrackers then PaninyAPI._espTrackers = {} end
+    -- Выключение ESP
+    if not on then
+        local hl = char:FindFirstChildOfClass("Highlight")
+        if hl then hl:Destroy() end
+
+        -- Отключаем трекер респавна, если есть
         if PaninyAPI._espTrackers[plr] then
             PaninyAPI._espTrackers[plr]:Disconnect()
+            PaninyAPI._espTrackers[plr] = nil
         end
+        return
+    end
 
-        PaninyAPI._espTrackers[plr] = plr.CharacterAdded:Connect(function(newChar)
-            task.wait(0.5)
-            PaninyAPI.setESP(plr, true)
-        end)
+    -- Включение ESP
+    local hl = char:FindFirstChildOfClass("Highlight")
+    if not hl then
+        hl = Instance.new("Highlight")
+        hl.Name = "PaninyESP"
+        hl.FillTransparency = 0.5
+        hl.OutlineTransparency = 0
+        hl.FillColor = Color3.fromRGB(255, 255, 0)
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        hl.Adornee = char
+        hl.Parent = char
+    end
+
+    -- Поддержание ESP при смерти/респавне
+    if PaninyAPI._espTrackers[plr] then
+        PaninyAPI._espTrackers[plr]:Disconnect()
+    end
+    PaninyAPI._espTrackers[plr] = plr.CharacterAdded:Connect(function(newChar)
+        task.wait(0.3)
+        PaninyAPI.setESP(plr, true)
+    end)
+end
+
 
     -- ВЫКЛЮЧЕНИЕ
     else

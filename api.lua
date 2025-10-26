@@ -358,51 +358,48 @@ function PaninyAPI.setSit(plr, on)
 end
 
 -- ESP (Highlight)
+local Players = game:GetService("Players")
+espHighlights = espHighlights or {}
+
 function PaninyAPI.setESP(plr, on)
-	local Players = game:GetService("Players")
-	local LocalPlayer = Players.LocalPlayer
-	espHighlights = espHighlights or {}
-
-	-- "all" case
-	if tostring(plr):lower() == "all" then
-		for _,p in pairs(Players:GetPlayers()) do
-			if p ~= LocalPlayer then
-				PaninyAPI.setESP(p, on)
-			end
-		end
-		return true
-	end
-
 	if not plr then return false end
+
 	local id = plr.UserId
+	espHighlights[id] = espHighlights[id] or {enabled = false, highlight = nil}
 
-	if on then
-		-- если уже есть Highlight, ничего не делаем
-		if espHighlights[id] and espHighlights[id].Parent then return true end
-		if not plr.Character then return false end
+	espHighlights[id].enabled = on
 
-		-- создаём Highlight
+	-- функция для создания Highlight на Character
+	local function applyHighlight(character)
+		if not espHighlights[id].enabled then return end
+		if espHighlights[id].highlight and espHighlights[id].highlight.Parent then return end
 		local highlight = Instance.new("Highlight")
 		highlight.Name = "PaninyESP"
 		highlight.FillTransparency = 1
 		highlight.OutlineColor = Color3.fromRGB(0,255,0)
-		highlight.Adornee = plr.Character
-		highlight.Parent = plr.Character
-
-		espHighlights[id] = highlight
-	else
-		-- отключаем только если явно вызвано off
-		if espHighlights[id] then
-			pcall(function() 
-				if espHighlights[id].Parent then 
-					espHighlights[id]:Destroy() 
-				end 
-			end)
-			espHighlights[id] = nil
-		end
+		highlight.Adornee = character
+		highlight.Parent = character
+		espHighlights[id].highlight = highlight
 	end
 
+	-- если уже есть Character, применяем сразу
+	if plr.Character then
+		applyHighlight(plr.Character)
+	end
+
+	-- подписываемся на респавн
+	plr.CharacterAdded:Connect(function(char)
+		applyHighlight(char)
+	end)
+
 	return true
+end
+
+-- "all" case
+function PaninyAPI.setESPAll(on)
+	for _,p in pairs(Players:GetPlayers()) do
+		PaninyAPI.setESP(p, on)
+	end
 end
 
 -- === АВТООБНОВЛЕНИЕ ESP ===

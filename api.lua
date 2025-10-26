@@ -359,64 +359,29 @@ end
 
 -- ESP (Highlight)
 function PaninyAPI.setESP(plr, on)
-    if not plr then return end
-    local char = plr.Character
-    if not char then return end
-
-    -- Таблица для отслеживания
-    PaninyAPI._espTrackers = PaninyAPI._espTrackers or {}
-
-    -- Выключение ESP
-    if not on then
-        local hl = char:FindFirstChildOfClass("Highlight")
-        if hl then hl:Destroy() end
-
-        -- Отключаем трекер респавна, если есть
-        if PaninyAPI._espTrackers[plr] then
-            PaninyAPI._espTrackers[plr]:Disconnect()
-            PaninyAPI._espTrackers[plr] = nil
-        end
-        return
-    end
-
-    -- Включение ESP
-    local hl = char:FindFirstChildOfClass("Highlight")
-    if not hl then
-        hl = Instance.new("Highlight")
-        hl.Name = "PaninyESP"
-        hl.FillTransparency = 0.5
-        hl.OutlineTransparency = 0
-        hl.FillColor = Color3.fromRGB(255, 255, 0)
-        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-        hl.Adornee = char
-        hl.Parent = char
-    end
-
-    -- Поддержание ESP при смерти/респавне
-    if PaninyAPI._espTrackers[plr] then
-        PaninyAPI._espTrackers[plr]:Disconnect()
-    end
-    PaninyAPI._espTrackers[plr] = plr.CharacterAdded:Connect(function(newChar)
-        task.wait(0.3)
-        PaninyAPI.setESP(plr, true)
-    end)
+	if tostring(plr):lower() == "all" then
+		for _,p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then PaninyAPI.setESP(p, on) end end
+		return true
+	end
+	if not plr then return false end
+	local id = plr.UserId
+	if on then
+		if espHighlights[id] and espHighlights[id].Parent then return true end
+		if not plr.Character then return false end
+		local highlight = Instance.new("Highlight")
+		highlight.FillTransparency = 1
+		highlight.OutlineColor = Color3.fromRGB(0,255,0)
+		highlight.Adornee = plr.Character
+		highlight.Parent = plr.Character
+		espHighlights[id] = highlight
+	else
+		if espHighlights[id] then
+			pcall(function() if espHighlights[id].Parent then espHighlights[id]:Destroy() end end)
+			espHighlights[id] = nil
+		end
+	end
+	return true
 end
-
-
-    -- ВЫКЛЮЧЕНИЕ
-    else
-        if highlight then
-            highlight:Destroy()
-        end
-        if PaninyAPI._espTrackers and PaninyAPI._espTrackers[plr] then
-            PaninyAPI._espTrackers[plr]:Disconnect()
-            PaninyAPI._espTrackers[plr] = nil
-        end
-    end
-end
-
-
-
 
 -- Health GUI
 function PaninyAPI.createHealthGuiForPlayer(plr)

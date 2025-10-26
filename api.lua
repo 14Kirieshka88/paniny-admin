@@ -97,36 +97,6 @@ Players.PlayerRemoving:Connect(function(plr) cleanupPlayer(plr) end)
 -- NOCLIP
 
 
-function PaninyAPI.setNoclip(plr, enable)
-    plr = plr or LocalPlayer
-    local char = ensureCharacter(plr)
-    if not char then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-
-    local id = plr.UserId
-    if enable then
-        if noclipState[id] then return true end
-        noclipState[id] = RunService.Stepped:Connect(function()
-            for _, part in pairs(char:GetChildren()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-        end)
-    else
-        if noclipState[id] then
-            noclipState[id]:Disconnect()
-            noclipState[id] = nil
-        end
-        for _, part in pairs(char:GetChildren()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
-        end
-    end
-    return true
-end
 
 
 -- FLY

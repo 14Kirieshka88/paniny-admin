@@ -359,71 +359,47 @@ end
 
 -- ESP (Highlight)
 function PaninyAPI.setESP(plr, on)
-	if tostring(plr):lower() == "all" then
-		for _,p in pairs(Players:GetPlayers()) do if p ~= LocalPlayer then PaninyAPI.setESP(p, on) end end
-		return true
-	end
-	if not plr then return false end
-	local id = plr.UserId
-	if on then
-		if espHighlights[id] and espHighlights[id].Parent then return true end
-		if not plr.Character then return false end
-		local highlight = Instance.new("Highlight")
-		highlight.FillTransparency = 1
-		highlight.OutlineColor = Color3.fromRGB(0,255,0)
-		highlight.Adornee = plr.Character
-		highlight.Parent = plr.Character
-		espHighlights[id] = highlight
-	else
-		if espHighlights[id] then
-			pcall(function() if espHighlights[id].Parent then espHighlights[id]:Destroy() end end)
-			espHighlights[id] = nil
-		end
-	end
-	return true
-end
+    if not plr or not plr.Character then return end
 
--- === АВТООБНОВЛЕНИЕ ESP ===
--- ===== Авто-включение ESP + health GUI на всех игроках =====
+    local char = plr.Character
+    local highlight = char:FindFirstChildOfClass("Highlight")
 
-local function tryEnableESP(plr)
-    -- включаем ESP если функция существует
-    if PaninyAPI.setESP then
-        PaninyAPI.setESP(plr, true)
-    end
-    -- создаём GUI здоровья, если функция есть
-    if PaninyAPI.createHealthGuiForPlayer then
-        PaninyAPI.createHealthGuiForPlayer(plr)
-    end
-end
+    -- ВКЛЮЧЕНИЕ
+    if on then
+        if not highlight then
+            highlight = Instance.new("Highlight")
+            highlight.Name = "PaninyESP"
+            highlight.FillTransparency = 0.5
+            highlight.OutlineTransparency = 0
+            highlight.FillColor = Color3.fromRGB(255, 255, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.Adornee = char
+            highlight.Parent = char
+        end
 
-local function trackPlayer(plr)
-    -- при старте сразу пытаемся
-    tryEnableESP(plr)
+        -- Автоматическое восстановление после смерти / респавна
+        if not PaninyAPI._espTrackers then PaninyAPI._espTrackers = {} end
+        if PaninyAPI._espTrackers[plr] then
+            PaninyAPI._espTrackers[plr]:Disconnect()
+        end
 
-    -- когда персонаж заново появляется (респавн), восстанавливаем
-    local conn = plr.CharacterAdded:Connect(function(char)
-        task.wait(0.1)  -- небольшой тайм-аут, чтобы части создались
-        tryEnableESP(plr)
-    end)
+        PaninyAPI._espTrackers[plr] = plr.CharacterAdded:Connect(function(newChar)
+            task.wait(0.5)
+            PaninyAPI.setESP(plr, true)
+        end)
 
-    -- сохраняем соединение на случай очистки
-    local id = plr.UserId
-    playerConnections[id] = playerConnections[id] or {}
-    table.insert(playerConnections[id], conn)
-end
-
--- запускаем для всех текущих игроков
-for _, pl in ipairs(Players:GetPlayers()) do
-    if pl ~= LocalPlayer then
-        trackPlayer(pl)
+    -- ВЫКЛЮЧЕНИЕ
+    else
+        if highlight then
+            highlight:Destroy()
+        end
+        if PaninyAPI._espTrackers and PaninyAPI._espTrackers[plr] then
+            PaninyAPI._espTrackers[plr]:Disconnect()
+            PaninyAPI._espTrackers[plr] = nil
+        end
     end
 end
 
--- при добавлении нового игрока
-Players.PlayerAdded:Connect(function(pl)
-    trackPlayer(pl)
-end)
 
 
 
